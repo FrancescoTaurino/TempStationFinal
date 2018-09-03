@@ -19,7 +19,6 @@ public class MyFirebaseDatabase {
     }
 
     public static void pushMeasurement(Measurement measurement) {
-        // setValueAsync ??
-        getReference("measurements").setValue(measurement);
+        getReference("measurements").push().setValue(measurement);
     }
 }

@@ -10,7 +10,7 @@ public class Measurement {
     }
 
     public Measurement(float value) {
-        this.timestamp = System.currentTimeMillis();
+        this.timestamp = (System.currentTimeMillis() / 1000) + 7200;
         this.value = value;
     }
 

@@ -32,18 +32,18 @@ public class MainActivityViewModel extends AndroidViewModel {
         this.temperatureLiveData = new TemperatureLiveData((SensorManager) getApplication().getSystemService(Context.SENSOR_SERVICE));
 
         try {
-            ledGreen = RainbowHat.openLedGreen();
-            ledRed = RainbowHat.openLedRed();
-            ledBlue = RainbowHat.openLedBlue();
+            this.ledGreen = RainbowHat.openLedGreen();
+            this.ledRed = RainbowHat.openLedRed();
+            this.ledBlue = RainbowHat.openLedBlue();
 
-            ledGreen.setValue(false);
-            ledRed.setValue(false);
-            ledBlue.setValue(false);
+            this.ledGreen.setValue(false);
+            this.ledRed.setValue(false);
+            this.ledBlue.setValue(false);
         }
         catch (IOException e) {
-            ledGreen = null;
-            ledRed = null;
-            ledBlue = null;
+            this.ledGreen = null;
+            this.ledRed = null;
+            this.ledBlue = null;
 
             Log.d(TAG, "MainActivityViewModel: " + e);
         }

@@ -11,57 +11,64 @@ import android.util.Log;
 import com.francesco.tempstationv3.database.MyFirebaseDatabase;
 import com.francesco.tempstationv3.model.Measurement;
 import com.francesco.tempstationv3.viewmodel.MainActivityViewModel;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getName();
 
+    private MainActivityViewModel mainActivityViewModel;
+
     private long counter = 0;
-    private boolean flag = true;
 
-    private final FirebaseAuth.AuthStateListener myAuthStateListener = new FirebaseAuth.AuthStateListener() {
+    private final Observer<Float> temperatureLiveDataObserver = new Observer<Float>() {
         @Override
-        public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-            FirebaseUser firebaseUser = firebaseAuth.getCurrentUser();
+        public void onChanged(@Nullable Float value) {
+            Log.d(TAG, "onChanged: " + value);
 
-            if (firebaseUser != null) {
-                final MainActivityViewModel mainActivityViewModel = ViewModelProviders.of(MainActivity.this).get(MainActivityViewModel.class);
-                mainActivityViewModel.getIsStartedLiveData().observe(MainActivity.this, new Observer<Boolean>() {
-                    @Override
-                    public void onChanged(@Nullable Boolean isStarted) {
-                        if (isStarted != null) {
-                            mainActivityViewModel.lightLed(isStarted);
+            if (value != null) {
+                if (counter % 50 == 0)
+                    MyFirebaseDatabase.pushMeasurement(new Measurement(value));
 
-                            if (isStarted) {
-                                Log.d(TAG, "onChanged: start temperature listening");
-
-                                mainActivityViewModel.getTemperatureLiveData().observe(MainActivity.this, new Observer<Float>() {
-                                    @Override
-                                    public void onChanged(@Nullable Float value) {
-                                        Log.d(TAG, "onChanged: " + value);
-
-                                        if (value != null) {
-                                            if (counter % 50 == 0)
-                                                MyFirebaseDatabase.pushMeasurement(new Measurement(value));
-
-                                            counter++;
-                                        }
-                                    }
-                                });
-                            }
-                            else {
-                                Log.d(TAG, "onChanged: stop temperature listening");
-
-                                mainActivityViewModel.getTemperatureLiveData().removeObservers(MainActivity.this);
-                            }
-                        }
-                    }
-                });
+                counter++;
             }
-            else if (flag) {
-                firebaseAuth.signInWithEmailAndPassword("email", "password");
-                flag = false;
+        }
+    };
+
+    private final Observer<Boolean> isStartedLiveDataObserver = new Observer<Boolean>() {
+        @Override
+        public void onChanged(@Nullable Boolean isStarted) {
+            if (isStarted != null) {
+                mainActivityViewModel.lightLed(isStarted);
+
+                if (isStarted) {
+                    Log.d(TAG, "onChanged: start temperature listening");
+
+                    mainActivityViewModel.getTemperatureLiveData().observe(MainActivity.this, temperatureLiveDataObserver);
+                }
+                else {
+                    Log.d(TAG, "onChanged: stop temperature listening");
+
+                    mainActivityViewModel.getTemperatureLiveData().removeObservers(MainActivity.this);
+                }
+            }
+        }
+    };
+
+    private final OnCompleteListener<AuthResult> myOnCompleteListener = new OnCompleteListener<AuthResult>() {
+        @Override
+        public void onComplete(@NonNull Task<AuthResult> task) {
+            if (task.isSuccessful()) {
+                Log.d(TAG, "onComplete: login succeeded");
+
+                mainActivityViewModel.getIsStartedLiveData().observe(MainActivity.this, isStartedLiveDataObserver);
+            }
+            else {
+                Log.d(TAG, "onComplete: login failed");
+
+                mainActivityViewModel.lightBlueLed();
             }
         }
     };
@@ -70,13 +77,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        FirebaseAuth.getInstance().addAuthStateListener(myAuthStateListener);
-    }
+        Log.d(TAG, "onCreate");
 
-    @Override
-    protected void onDestroy() {
-        FirebaseAuth.getInstance().removeAuthStateListener(myAuthStateListener);
+        mainActivityViewModel = ViewModelProviders.of(MainActivity.this).get(MainActivityViewModel.class);
 
-        super.onDestroy();
+        if (FirebaseAuth.getInstance().getCurrentUser() == null)
+            FirebaseAuth.getInstance().signInWithEmailAndPassword("email", "password").addOnCompleteListener(MainActivity.this, myOnCompleteListener);
+        else
+            mainActivityViewModel.getIsStartedLiveData().observe(MainActivity.this, isStartedLiveDataObserver);
     }
 }
